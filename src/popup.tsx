@@ -11,14 +11,25 @@ const apiUrl = process.env.PLASMO_PUBLIC_IS_PRO
   ? "https://api.deepl.com/v2"
   : "https://api-free.deepl.com/v2"
 
-const translateText = async (text: string, targetLanguage = "en") => {
+const formalityOptions = {
+  default: { label: "default", value: "default" },
+  prefer_more: { label: "prefer_more", value: "prefer_more" },
+  prefer_less: { label: "prefer_less", value: "prefer_less" }
+}
+
+const translateText = async (
+  text: string,
+  targetLanguage = "en",
+  formality = "default"
+) => {
   const { data } = await axios.post<{
     translations: { detected_source_language: string; text: string }[]
   }>(
     `${apiUrl}/translate`,
     {
       text: [text],
-      target_lang: targetLanguage
+      target_lang: targetLanguage,
+      formality
     },
     {
       headers: {
@@ -32,12 +43,19 @@ const translateText = async (text: string, targetLanguage = "en") => {
   return { originalText: text, translatedText: translation }
 }
 
-interface LanguageSelectorProps {
+interface ConfigureSelectorsProps {
   language: string
   setLanguage: (language: string) => void
+  formality: string
+  setFormality: (formality: string) => void
 }
 
-const LanguageSelector = ({ language, setLanguage }: LanguageSelectorProps) => {
+const ConfigureSelectors = ({
+  language,
+  setLanguage,
+  formality,
+  setFormality
+}: ConfigureSelectorsProps) => {
   const [supportedLanguages, setSupportedLanguages] = useState<
     {
       language: string
@@ -75,6 +93,13 @@ const LanguageSelector = ({ language, setLanguage }: LanguageSelectorProps) => {
           </option>
         ))}
       </select>
+      <select value={formality} onChange={(e) => setFormality(e.target.value)}>
+        {Object.values(formalityOptions).map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
     </div>
   )
 }
@@ -85,6 +110,7 @@ function IndexPopup() {
   const [isLoading, setIsLoading] = useState<boolean>(false)
   const [targetLanguage, setTargetLanguage] = useState<string>("es")
   const [inputValue, setInputValue] = useState<string>("")
+  const [formality, setFormality] = useState<string>("default")
 
   useEffect(() => {
     chrome.runtime.onMessage.addListener(async (message) => {
@@ -92,7 +118,9 @@ function IndexPopup() {
         try {
           setIsLoading(true)
           const { originalText, translatedText } = await translateText(
-            message.originalText
+            message.originalText,
+            targetLanguage,
+            formality
           )
 
           setOriginalText(originalText)
@@ -113,7 +141,11 @@ function IndexPopup() {
   }, [originalText])
 
   const handleTranslate = async () => {
-    const { translatedText } = await translateText(inputValue, targetLanguage)
+    const { translatedText } = await translateText(
+      inputValue,
+      targetLanguage,
+      formality
+    )
     setTranslation(translatedText)
   }
 
@@ -125,9 +157,11 @@ function IndexPopup() {
         </h1>
       </div>
       <div className="mt-2 flex flex-col gap-2 justify-center bg-slate-500">
-        <LanguageSelector
+        <ConfigureSelectors
           language={targetLanguage}
           setLanguage={setTargetLanguage}
+          formality={formality}
+          setFormality={setFormality}
         />
         {isLoading ? (
           <div>Loading</div>
@@ -144,6 +178,7 @@ function IndexPopup() {
             <button className="bg-sky-300" onClick={handleTranslate}>
               Translate
             </button>
+
             <span className="text-red-300 font-semibold mt-2">
               {translation}
             </span>
