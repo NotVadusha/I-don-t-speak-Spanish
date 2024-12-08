@@ -1,38 +1,80 @@
-import { useState } from "react"
+import axios from "axios"
+import { useEffect, useState } from "react"
+
+import { sendOriginalTextMessageAction } from "~background"
 
 import "./style.css"
 
-function IndexPopup() {
-  const [selectedText, setSelectedText] = useState("")
+const googleTranslateApiKey = process.env.PLASMO_PUBLIC_TRANSLATION_KEY ?? ""
 
-  const showSelectedText = async () => {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
-    let result
-    console.log(tab)
-    try {
-      ;[{ result }] = await chrome.scripting.executeScript({
-        target: { tabId: tab.id },
-        func: () => getSelection().toString()
-      })
-      console.log(result)
-    } catch (e) {
-      console.error(e)
-      return // ignoring an unsupported page like chrome://extensions
+const translateText = async (text: string, targetLanguage = "en") => {
+  const { data } = await axios.post(
+    "https://translation.googleapis.com/language/translate/v2",
+    { q: text, target: targetLanguage },
+    {
+      params: { key: googleTranslateApiKey }
     }
-    document.body.append("Selection: " + result)
-  }
+  )
+
+  const translation =
+    data?.data?.translations[0]?.translatedText || "Translation failed"
+
+  return { originalText: text, translatedText: translation }
+}
+
+const ChangeThemeIcon = () => {
+  return <span>icon</span>
+}
+
+function IndexPopup() {
+  const [translation, setTranslation] = useState<string | null>(null)
+  const [originalText, setOriginalText] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState<boolean>(false)
+
+  useEffect(() => {
+    chrome.runtime.onMessage.addListener(async (message) => {
+      if (message.action === sendOriginalTextMessageAction) {
+        try {
+          setIsLoading(true)
+          const { originalText, translatedText } = await translateText(
+            message.originalText
+          )
+
+          setOriginalText(originalText)
+          setTranslation(translatedText)
+        } catch (e) {
+          console.error(e)
+        } finally {
+          setIsLoading(false)
+        }
+      }
+    })
+  }, [])
 
   return (
-    <div>
-      <button
-        onClick={() => showSelectedText()}
-        type="button"
-        className="inline-flex items-center px-5 py-2.5 text-sm font-medium text-center text-white bg-blue-700 rounded-lg hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">
-        Count:
-      </button>
-      <span className="inline-flex items-center justify-center w-8 h-4 ml-2 text-xs font-semibold text-blue-800 bg-blue-200 rounded-full">
-        {selectedText}
-      </span>
+    <div className="p-6 w-96">
+      <div className="flex flex-row justify-between">
+        <h1>IDK Spanish!</h1>
+        <ChangeThemeIcon />
+      </div>
+      <div className="mt-2 flex flex-col gap-2 justify-center bg-slate-500">
+        <div>
+          <input className="bg-red-500 p-2 w-full" type="text" name="" id="" />
+        </div>
+        {isLoading ? (
+          <div>Loading</div>
+        ) : (
+          <>
+            <span className="text-red-300 font-semibold mt-2">
+              {originalText}
+            </span>
+            <button className="bg-sky-300">Translate</button>
+            <span className="text-red-300 font-semibold mt-2">
+              {translation}
+            </span>
+          </>
+        )}
+      </div>
     </div>
   )
 }
