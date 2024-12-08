@@ -1,15 +1,17 @@
 import { deeplApi } from "~deepl.service"
 
-interface SupportedLanguage {
+export interface SupportedLanguage {
   language: string
   name: string
   supports_formality: boolean
 }
 
-export const getSupportedLanguages = async (): Promise<SupportedLanguage[]> => {
+export const getSupportedLanguages = async (
+  type: "source" | "target"
+): Promise<SupportedLanguage[]> => {
   try {
     const { data } = await deeplApi.get<SupportedLanguage[]>(
-      "/languages?type=source"
+      `/languages?type=${type}`
     )
     return data
   } catch (error) {

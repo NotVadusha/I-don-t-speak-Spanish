@@ -2,7 +2,7 @@ import { deeplApi } from "~deepl.service"
 
 export const translateText = async (
   text: string,
-  targetLanguage = "en",
+  targetLanguage: string,
   formality = "default"
 ) => {
   try {
@@ -16,9 +16,12 @@ export const translateText = async (
 
     const translation = data.translations[0].text
 
-    return { originalText: text, translatedText: translation }
+    return {
+      originalText: text,
+      translatedText: translation
+    }
   } catch (error) {
     console.error(error)
-    return { originalText: text, translatedText: "" }
+    return { originalText: text, translatedText: "", language: "" }
   }
 }

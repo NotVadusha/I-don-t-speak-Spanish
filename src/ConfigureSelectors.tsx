@@ -1,62 +1,86 @@
-import { useEffect, useState } from "react"
-
-import { getSupportedLanguages } from "~helpers/getSupportedLanguages"
+import type { SupportedLanguage } from "~helpers/getSupportedLanguages"
 
 interface ConfigureSelectorsProps {
   language: string
   setLanguage: (language: string) => void
+  targetLanguage: string
+  setTargetLanguage: (language: string) => void
   formality: string
   setFormality: (formality: string) => void
+  supportedSourceLanguages: SupportedLanguage[]
+  supportedTargetLanguages: SupportedLanguage[]
 }
 
 const formalityOptions = {
-  default: { label: "default", value: "default" },
-  prefer_more: { label: "prefer_more", value: "prefer_more" },
-  prefer_less: { label: "prefer_less", value: "prefer_less" }
+  default: { label: "Default", value: "default" },
+  prefer_more: { label: "More Formal", value: "prefer_more" },
+  prefer_less: { label: "Less Formal", value: "prefer_less" }
 }
 
-export const ConfigureSelectors = ({
-  language,
-  setLanguage,
-  formality,
-  setFormality
-}: ConfigureSelectorsProps) => {
-  const [supportedLanguages, setSupportedLanguages] = useState<
-    {
-      language: string
-      name: string
-      supports_formality: boolean
-    }[]
-  >([])
-
-  useEffect(() => {
-    ;(async () => {
-      const data = await getSupportedLanguages()
-
-      setSupportedLanguages(data)
-      setLanguage(
-        data.find((lang) => lang.language === "es")?.language ??
-          data[0].language
-      )
-    })()
-  }, [])
-
+const Selector = ({
+  label,
+  value,
+  options,
+  onChange
+}: {
+  label: string
+  value: string
+  options: { label: string; value: string }[]
+  onChange: (value: string) => void
+}) => {
   return (
-    <div>
-      <select value={language} onChange={(e) => setLanguage(e.target.value)}>
-        {supportedLanguages.map((lang) => (
-          <option key={lang.language} value={lang.language}>
-            {lang.name}
-          </option>
-        ))}
-      </select>
-      <select value={formality} onChange={(e) => setFormality(e.target.value)}>
-        {Object.values(formalityOptions).map((option) => (
+    <div className="flex flex-col items-start justify-start">
+      <span className="text-sm text-gray-500">{label}</span>
+      <select
+        className="p-2 w-full shadow-md rounded-md hover:cursor-pointer hover:bg-accent"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}>
+        {options.map((option) => (
           <option key={option.value} value={option.value}>
             {option.label}
           </option>
         ))}
       </select>
+    </div>
+  )
+}
+
+export const ConfigureSelectors = ({
+  language,
+  setLanguage,
+  setTargetLanguage,
+  targetLanguage,
+  formality,
+  setFormality,
+  supportedSourceLanguages,
+  supportedTargetLanguages
+}: ConfigureSelectorsProps) => {
+  return (
+    <div className="grid grid-cols-3 gap-2">
+      <Selector
+        label="Source Language"
+        value={language}
+        options={supportedSourceLanguages.map((lang) => ({
+          label: lang.name,
+          value: lang.language
+        }))}
+        onChange={setLanguage}
+      />{" "}
+      <Selector
+        label="Target Language"
+        value={targetLanguage}
+        options={supportedTargetLanguages.map((lang) => ({
+          label: lang.name,
+          value: lang.language
+        }))}
+        onChange={setTargetLanguage}
+      />
+      <Selector
+        label="Formality"
+        value={formality}
+        options={Object.values(formalityOptions)}
+        onChange={setFormality}
+      />
     </div>
   )
 }
