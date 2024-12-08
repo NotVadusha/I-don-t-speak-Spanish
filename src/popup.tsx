@@ -5,20 +5,29 @@ import { sendOriginalTextMessageAction } from "./background"
 
 import "./style.css"
 
-const googleTranslateApiKey = process.env.PLASMO_PUBLIC_TRANSLATION_KEY ?? ""
-const projectId = process.env.PLASMO_PUBLIC_PROJECT_ID ?? ""
+const deeplApiKey = process.env.PLASMO_PUBLIC_TRANSLATION_KEY ?? ""
+
+const apiUrl = process.env.PLASMO_PUBLIC_IS_PRO
+  ? "https://api.deepl.com/v2"
+  : "https://api-free.deepl.com/v2"
 
 const translateText = async (text: string, targetLanguage = "en") => {
-  const { data } = await axios.post(
-    "https://translation.googleapis.com/language/translate/v2",
-    { q: text, target: targetLanguage },
+  const { data } = await axios.post<{
+    translations: { detected_source_language: string; text: string }[]
+  }>(
+    `${apiUrl}/translate`,
     {
-      params: { key: googleTranslateApiKey }
+      text: [text],
+      target_lang: targetLanguage
+    },
+    {
+      headers: {
+        Authorization: `DeepL-Auth-Key ${deeplApiKey}`
+      }
     }
   )
 
-  const translation =
-    data?.data?.translations[0]?.translatedText || "Translation failed"
+  const translation = data.translations[0].text
 
   return { originalText: text, translatedText: translation }
 }
@@ -30,16 +39,28 @@ interface LanguageSelectorProps {
 
 const LanguageSelector = ({ language, setLanguage }: LanguageSelectorProps) => {
   const [supportedLanguages, setSupportedLanguages] = useState<
-    { languageCode: string; displayName: string }[]
+    {
+      language: string
+      name: string
+      supports_formality: boolean
+    }[]
   >([])
 
   useEffect(() => {
     const getSupportedLanguages = async () => {
-      const { data } = await axios.get(
-        `https://translate.googleapis.com/v3/projects/${projectId}/locations/global/supportedLanguages`
-      )
+      const { data } = await axios.get<
+        {
+          language: string
+          name: string
+          supports_formality: boolean
+        }[]
+      >(`${apiUrl}/languages?type=source`, {
+        headers: {
+          Authorization: `DeepL-Auth-Key ${deeplApiKey}`
+        }
+      })
 
-      setSupportedLanguages(data.languages)
+      setSupportedLanguages(data)
     }
 
     getSupportedLanguages()
@@ -49,8 +70,8 @@ const LanguageSelector = ({ language, setLanguage }: LanguageSelectorProps) => {
     <div>
       <select value={language} onChange={(e) => setLanguage(e.target.value)}>
         {supportedLanguages.map((lang) => (
-          <option key={lang.languageCode} value={lang.languageCode}>
-            {lang.displayName}
+          <option key={lang.language} value={lang.language}>
+            {lang.name}
           </option>
         ))}
       </select>
@@ -73,8 +94,6 @@ function IndexPopup() {
           const { originalText, translatedText } = await translateText(
             message.originalText
           )
-
-          console.log(originalText, translatedText)
 
           setOriginalText(originalText)
           setTranslation(translatedText)
