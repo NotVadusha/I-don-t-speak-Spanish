@@ -1,108 +1,11 @@
-import axios from "axios"
 import { useEffect, useState } from "react"
 
 import { sendOriginalTextMessageAction } from "./background"
 
 import "./style.css"
 
-const deeplApiKey = process.env.PLASMO_PUBLIC_TRANSLATION_KEY ?? ""
-
-const apiUrl = process.env.PLASMO_PUBLIC_IS_PRO
-  ? "https://api.deepl.com/v2"
-  : "https://api-free.deepl.com/v2"
-
-const formalityOptions = {
-  default: { label: "default", value: "default" },
-  prefer_more: { label: "prefer_more", value: "prefer_more" },
-  prefer_less: { label: "prefer_less", value: "prefer_less" }
-}
-
-const translateText = async (
-  text: string,
-  targetLanguage = "en",
-  formality = "default"
-) => {
-  const { data } = await axios.post<{
-    translations: { detected_source_language: string; text: string }[]
-  }>(
-    `${apiUrl}/translate`,
-    {
-      text: [text],
-      target_lang: targetLanguage,
-      formality
-    },
-    {
-      headers: {
-        Authorization: `DeepL-Auth-Key ${deeplApiKey}`
-      }
-    }
-  )
-
-  const translation = data.translations[0].text
-
-  return { originalText: text, translatedText: translation }
-}
-
-interface ConfigureSelectorsProps {
-  language: string
-  setLanguage: (language: string) => void
-  formality: string
-  setFormality: (formality: string) => void
-}
-
-const ConfigureSelectors = ({
-  language,
-  setLanguage,
-  formality,
-  setFormality
-}: ConfigureSelectorsProps) => {
-  const [supportedLanguages, setSupportedLanguages] = useState<
-    {
-      language: string
-      name: string
-      supports_formality: boolean
-    }[]
-  >([])
-
-  useEffect(() => {
-    const getSupportedLanguages = async () => {
-      const { data } = await axios.get<
-        {
-          language: string
-          name: string
-          supports_formality: boolean
-        }[]
-      >(`${apiUrl}/languages?type=source`, {
-        headers: {
-          Authorization: `DeepL-Auth-Key ${deeplApiKey}`
-        }
-      })
-
-      setSupportedLanguages(data)
-    }
-
-    getSupportedLanguages()
-  }, [])
-
-  return (
-    <div>
-      <select value={language} onChange={(e) => setLanguage(e.target.value)}>
-        {supportedLanguages.map((lang) => (
-          <option key={lang.language} value={lang.language}>
-            {lang.name}
-          </option>
-        ))}
-      </select>
-      <select value={formality} onChange={(e) => setFormality(e.target.value)}>
-        {Object.values(formalityOptions).map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
-    </div>
-  )
-}
+import { ConfigureSelectors } from "~ConfigureSelectors"
+import { translateText } from "~helpers/getTranslation"
 
 function IndexPopup() {
   const [translation, setTranslation] = useState<string | null>(null)
