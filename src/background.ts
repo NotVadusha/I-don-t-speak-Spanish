@@ -11,7 +11,6 @@ chrome.runtime.onInstalled.addListener(() => {
   })
 })
 
-// Listen for clicks on the context menu
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   if (info.menuItemId === translationMainMenuId && info.selectionText) {
     const selectedText = info.selectionText
